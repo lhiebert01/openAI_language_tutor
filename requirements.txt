@@ -7,3 +7,4 @@ httpx
 anyio
 sniffio
 httpcore
+pydub

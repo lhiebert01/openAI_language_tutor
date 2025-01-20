@@ -6,6 +6,8 @@ from datetime import datetime
 from gtts import gTTS
 import tempfile
 import time
+from pydub import AudioSegment
+import io
 
 # Load environment variables
 load_dotenv(override=True)
@@ -13,24 +15,53 @@ load_dotenv(override=True)
 # Configure OpenAI
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# Modified text_to_speech function for Streamlit Cloud compatibility
+# Modified text_to_speech function with better Windows compatibility
 def text_to_speech(text, lang='en'):
+    temp_file = None
     try:
         # Create a temporary file with a specific directory
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3', dir='.') as temp_file:
-            # Generate speech
-            tts = gTTS(text=text, lang=lang)
-            # Save to temporary file
-            tts.save(temp_file.name)
-            # Read the audio file
-            with open(temp_file.name, 'rb') as audio_file:
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3', dir='.')
+        temp_file_path = temp_file.name
+        temp_file.close()  # Close the file handle immediately
+
+        # Generate speech
+        tts = gTTS(text=text, lang=lang)
+        # Save to temporary file
+        tts.save(temp_file_path)
+        
+        try:
+            # Convert to iOS-compatible format using pydub
+            audio = AudioSegment.from_mp3(temp_file_path)
+            
+            # Export as WAV with iOS-compatible settings
+            buffer = io.BytesIO()
+            audio.export(buffer, format='wav', 
+                       parameters=["-acodec", "pcm_s16le",  # Use PCM codec
+                                 "-ac", "1",                # Mono audio
+                                 "-ar", "16000"])          # 16kHz sample rate
+            
+            # Get the audio bytes
+            audio_bytes = buffer.getvalue()
+            buffer.close()
+        except Exception as e:
+            st.error(f"Error converting audio: {str(e)}")
+            # If conversion fails, fall back to original MP3
+            with open(temp_file_path, 'rb') as audio_file:
                 audio_bytes = audio_file.read()
-            # Clean up the temporary file
-            os.remove(temp_file.name)
-            return audio_bytes
+        
+        return audio_bytes
+            
     except Exception as e:
         st.error(f"Error generating speech: {str(e)}")
         return None
+    finally:
+        # Clean up in the finally block
+        try:
+            if temp_file is not None:
+                if os.path.exists(temp_file.name):
+                    os.unlink(temp_file.name)
+        except Exception as e:
+            st.error(f"Error cleaning up temporary file: {str(e)}")
 
 # Custom CSS
 st.markdown("""
@@ -257,7 +288,7 @@ def main():
                     st.write(user_message)
                     original_audio = text_to_speech(user_message, 'en')
                     if original_audio:
-                        st.audio(original_audio, format='audio/mp3')
+                        st.audio(original_audio, format='audio/wav')
                 
                 ai_response = get_ai_response(
                     language.split()[0],
@@ -278,7 +309,7 @@ def main():
                                 lang_code = lang_codes.get(language, "en")
                                 translated_audio = text_to_speech(translated_text, lang_code)
                                 if translated_audio:
-                                    st.audio(translated_audio, format='audio/mp3')
+                                    st.audio(translated_audio, format='audio/wav')
                 
                 # Add to conversation history
                 st.session_state.conversation.extend([
@@ -300,12 +331,12 @@ def main():
                                     lang_code = lang_codes.get(language, "en")
                                     translated_audio = text_to_speech(translated_text, lang_code)
                                     if translated_audio:
-                                        st.audio(translated_audio, format='audio/mp3')
+                                        st.audio(translated_audio, format='audio/wav')
                     else:
                         st.write(message["content"])
                         original_audio = text_to_speech(message["content"], 'en')
                         if original_audio:
-                            st.audio(original_audio, format='audio/mp3')
+                            st.audio(original_audio, format='audio/wav')
             st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
