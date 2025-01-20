@@ -13,17 +13,21 @@ load_dotenv(override=True)
 # Configure OpenAI
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# Function to convert text to speech and play it
+# Modified text_to_speech function for Streamlit Cloud compatibility
 def text_to_speech(text, lang='en'):
     try:
-        # Create a temporary file
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
-        # Generate speech
-        tts = gTTS(text=text, lang=lang)
-        # Save to temporary file
-        tts.save(temp_file.name)
-        # Return the filename
-        return temp_file.name
+        # Create a temporary file with a specific directory
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3', dir='.') as temp_file:
+            # Generate speech
+            tts = gTTS(text=text, lang=lang)
+            # Save to temporary file
+            tts.save(temp_file.name)
+            # Read the audio file
+            with open(temp_file.name, 'rb') as audio_file:
+                audio_bytes = audio_file.read()
+            # Clean up the temporary file
+            os.remove(temp_file.name)
+            return audio_bytes
     except Exception as e:
         st.error(f"Error generating speech: {str(e)}")
         return None
@@ -147,7 +151,7 @@ def main():
         st.markdown("### 🎯 Learning Settings")
         language = st.selectbox(
             "Choose your language",
-            [ "Spanish 🇪🇸", "French 🇫🇷", "German 🇩🇪", 
+            ["Spanish 🇪🇸", "French 🇫🇷", "German 🇩🇪", 
              "Italian 🇮🇹", "Japanese 🇯🇵", "Korean 🇰🇷", "Chinese 🇨🇳"]
         )
         level = st.select_slider(
@@ -186,19 +190,17 @@ def main():
                 "👋 Greetings": [
                     "Hello and Welcome, how are you today?",
                     "My name is Ms. GenAI Tutor. What is your name?"
-        
                 ],
                 "🔢 Numbers": [
                     "Count numbers 1, 2, 3, 4, 5, 6, 7, 8, 9, 10",
-                    "What is the cost of these items, please?" 
+                    "What is the cost of these items, please?"
                 ],
                 "🍽️ Dining": [
                     "I would like a cup a coffee, with milk and sugar please",
-                     " May I please see menu"
-                
+                    "May I please see menu"
                 ],
                 "🗺️ Directions": [
-                    "Excuse me, Would you please tell me how to get to Train station? ",
+                    "Excuse me, Would you please tell me how to get to Train station?",
                     "Where is the nearest pharmacy?"
                 ]
             }
@@ -255,7 +257,7 @@ def main():
                     st.write(user_message)
                     original_audio = text_to_speech(user_message, 'en')
                     if original_audio:
-                        st.audio(original_audio)
+                        st.audio(original_audio, format='audio/mp3')
                 
                 ai_response = get_ai_response(
                     language.split()[0],
@@ -276,16 +278,7 @@ def main():
                                 lang_code = lang_codes.get(language, "en")
                                 translated_audio = text_to_speech(translated_text, lang_code)
                                 if translated_audio:
-                                    st.audio(translated_audio)
-                                    st.markdown(
-                                        f"""
-                                        <script>
-                                            const audio = document.querySelector('audio[src="{translated_audio}"]');
-                                            audio.play();
-                                        </script>
-                                        """,
-                                        unsafe_allow_html=True
-                                    )
+                                    st.audio(translated_audio, format='audio/mp3')
                 
                 # Add to conversation history
                 st.session_state.conversation.extend([
@@ -307,12 +300,12 @@ def main():
                                     lang_code = lang_codes.get(language, "en")
                                     translated_audio = text_to_speech(translated_text, lang_code)
                                     if translated_audio:
-                                        st.audio(translated_audio)
+                                        st.audio(translated_audio, format='audio/mp3')
                     else:
                         st.write(message["content"])
                         original_audio = text_to_speech(message["content"], 'en')
                         if original_audio:
-                            st.audio(original_audio)
+                            st.audio(original_audio, format='audio/mp3')
             st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
