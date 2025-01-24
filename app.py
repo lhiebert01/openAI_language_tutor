@@ -183,22 +183,30 @@ def main():
         language = st.selectbox(
             "Choose your language",
             ["Spanish 🇪🇸", "French 🇫🇷", "German 🇩🇪", 
-             "Italian 🇮🇹", "Japanese 🇯🇵", "Korean 🇰🇷", "Chinese 🇨🇳"]
+             "Italian 🇮🇹", "Japanese 🇯🇵", "Korean 🇰🇷", "Chinese 🇨🇳",
+             "Croatian 🇭🇷", "Vietnamese 🇻🇳"]
         )
+        
+
+        
         level = st.select_slider(
             "Proficiency Level",
             options=["Beginner 🌱", "Intermediate 🌿", "Advanced 🌳"]
         )
         
         # Language code mapping for TTS
+
+        
         lang_codes = {
             "Spanish 🇪🇸": "es",
             "French 🇫🇷": "fr",
             "German 🇩🇪": "de",
-            "Italian 🇮🇹": "it",
+            "Italian 🇮🇹": "it", 
             "Japanese 🇯🇵": "ja",
             "Korean 🇰🇷": "ko",
-            "Chinese 🇨🇳": "zh-CN"
+            "Chinese 🇨🇳": "zh-CN",
+            "Croatian 🇭🇷": "hr",
+            "Vietnamese 🇻🇳": "vi"
         }
         
         st.markdown("### 🔧 Display Options")
